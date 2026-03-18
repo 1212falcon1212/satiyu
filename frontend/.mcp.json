@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "boost:mcp"
+            ],
+            "cwd": "/Users/sahinyildiz/Desktop/Siteler/camp_site/backend"
+        }
+    }
+}
