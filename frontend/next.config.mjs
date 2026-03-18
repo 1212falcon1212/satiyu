@@ -46,7 +46,7 @@ const nextConfig = {
     return [
       {
         source: '/storage/:path*',
-        destination: `${process.env.API_URL?.replace('/api', '') ?? 'http://127.0.0.1:8000'}/storage/:path*`,
+        destination: `${process.env.STORAGE_URL || process.env.API_URL?.replace(/\/api$/, '') || 'http://127.0.0.1:8000'}/storage/:path*`,
       },
     ];
   },
