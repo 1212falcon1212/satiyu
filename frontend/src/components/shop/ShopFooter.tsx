@@ -200,7 +200,7 @@ export function ShopFooter({ settings, categories, brands, blogPosts = [] }: Sho
               &copy; {new Date().getFullYear()} {siteName}. Tüm hakları saklıdır.
             </span>
             <span className="text-sm text-secondary-500">
-              Zunapro <a href="https://www.zunapro.com/turkey/e-ticaret" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">E-Ticaret Paketleri</a> kullanılmıştır.
+              Satiyu <a href="https://www.satiyu.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">E-Ticaret</a> altyapısı kullanılmaktadır.
             </span>
             <div className="flex items-center gap-3">
               <Image src="/images/payment/visa.png" alt="Visa" width={48} height={32} className="h-7 w-auto rounded bg-white/90 px-1.5 py-0.5 object-contain" unoptimized />

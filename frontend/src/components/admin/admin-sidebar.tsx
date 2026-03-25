@@ -26,6 +26,7 @@ import {
   Newspaper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/hooks/useSettings';
 
 interface MenuItem {
   label: string;
@@ -103,6 +104,8 @@ interface AdminSidebarProps {
 export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const settings = useSettings();
+  const siteName = settings.general?.site_name || 'Admin';
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
@@ -118,7 +121,7 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
       <div className="flex h-16 items-center justify-between border-b border-secondary-200 px-4">
         {!collapsed && (
           <Link href="/admin" className="font-display text-lg font-bold text-primary-700">
-            KampAdmin
+            {siteName}
           </Link>
         )}
         {/* Desktop collapse toggle */}

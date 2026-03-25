@@ -41,7 +41,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl text-primary-600">KampAdmin</CardTitle>
+          <CardTitle className="text-2xl text-primary-600">Yönetim Paneli</CardTitle>
           <CardDescription>Yönetim paneline giriş yapın</CardDescription>
         </CardHeader>
         <CardContent>
