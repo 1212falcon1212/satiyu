@@ -392,7 +392,7 @@ export interface HomepageSectionAdmin {
 // ─── Marketplace ─────────────────────────────────────────────
 export interface MarketplaceCredential {
   id: number;
-  marketplace: 'trendyol' | 'hepsiburada';
+  marketplace: 'trendyol' | 'hepsiburada' | 'ciceksepeti';
   apiKey: string;
   sellerId?: string;
   supplierId?: string;

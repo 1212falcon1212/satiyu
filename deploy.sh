@@ -1,42 +1,45 @@
 #!/bin/bash
 set -e
 
-PROJECT_DIR="/var/www/keskinkamp"
+SERVER="satiyu"
+BACKEND_DIR="/home/satiyu-api/htdocs/api.satiyu.com"
+FRONTEND_DIR="/home/satiyu/htdocs/www.satiyu.com"
 BRANCH="main"
 
 echo "=== Deploy started at $(date) ==="
 
-cd "$PROJECT_DIR"
+# Push latest changes to GitHub
+echo ">> Pushing to GitHub..."
+git push origin "$BRANCH"
 
-# Pull latest changes
-echo ">> Pulling latest changes..."
-git pull origin "$BRANCH"
+# Deploy on server
+ssh "$SERVER" bash -s << 'ENDSSH'
+set -e
+
+BACKEND_DIR="/home/satiyu-api/htdocs/api.satiyu.com"
+FRONTEND_DIR="/home/satiyu/htdocs/www.satiyu.com"
+BRANCH="main"
 
 # Backend
-echo ">> Installing backend dependencies..."
-cd "$PROJECT_DIR/backend"
+echo ">> Deploying backend..."
+cd "$BACKEND_DIR"
+git pull origin "$BRANCH"
 composer install --no-dev --optimize-autoloader --no-interaction
-
-echo ">> Running migrations..."
 php artisan migrate --force
-
-echo ">> Caching config, routes, views..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
-
-echo ">> Restarting queue workers..."
 php artisan queue:restart
 
 # Frontend
-echo ">> Installing frontend dependencies..."
-cd "$PROJECT_DIR/frontend"
+echo ">> Deploying frontend..."
+cd "$FRONTEND_DIR"
+git pull origin "$BRANCH"
 npm ci
-
-echo ">> Building frontend..."
 npm run build
 
-echo ">> Restarting PM2 process..."
-pm2 restart keskinkamp-frontend || pm2 start npm --name "keskinkamp-frontend" -- start
+echo ">> Restarting PM2..."
+pm2 restart satiyu-frontend || pm2 start npm --name "satiyu-frontend" -- start
 
 echo "=== Deploy completed at $(date) ==="
+ENDSSH

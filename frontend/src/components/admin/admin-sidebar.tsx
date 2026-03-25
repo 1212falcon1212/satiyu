@@ -69,6 +69,7 @@ const menuSections: MenuSection[] = [
       { label: 'XML Kaynakları', href: '/admin/xml-sources', icon: FileCode },
       { label: 'Trendyol', href: '/admin/trendyol', icon: Store },
       { label: 'Hepsiburada', href: '/admin/hepsiburada', icon: Store },
+      { label: 'Çiçeksepeti', href: '/admin/ciceksepeti', icon: Store },
     ],
   },
   {
@@ -76,6 +77,7 @@ const menuSections: MenuSection[] = [
     items: [
       { label: 'Trendyol Gönderim', href: '/admin/trendyol/products', icon: Send },
       { label: 'Hepsiburada Gönderim', href: '/admin/hepsiburada/products', icon: Send },
+      { label: 'Çiçeksepeti Gönderim', href: '/admin/ciceksepeti/products', icon: Send },
     ],
   },
   {

@@ -8,9 +8,13 @@ use App\Http\Requests\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\CategoryTreeResource;
 use App\Models\Category;
+use App\Models\MarketplaceCategoryMapping;
+use App\Models\Product;
+use App\Models\XmlCategoryMapping;
 use App\Services\CategoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class CategoryController extends Controller
@@ -109,6 +113,95 @@ class CategoryController extends Controller
         return response()->json([
             'data' => [
                 'message' => 'Category deleted successfully.',
+            ],
+        ]);
+    }
+
+    /**
+     * Kaynak kategoriyi hedef kategoriye birleştirir.
+     * Ürünler, alt kategoriler, marketplace ve XML mappingleri taşınır, kaynak silinir.
+     */
+    public function merge(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'source_id' => ['required', 'integer', 'exists:categories,id'],
+            'target_id' => ['required', 'integer', 'exists:categories,id', 'different:source_id'],
+        ]);
+
+        $sourceId = $validated['source_id'];
+        $targetId = $validated['target_id'];
+
+        $source = Category::findOrFail($sourceId);
+        $target = Category::findOrFail($targetId);
+
+        // Hedef, kaynağın alt kategorisi olamaz
+        if ($target->path && str_contains($target->path, (string) $sourceId)) {
+            return response()->json([
+                'message' => 'Hedef kategori, kaynak kategorinin alt kategorisi olamaz.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        DB::transaction(function () use ($sourceId, $targetId) {
+            // 1. Ürünleri taşı
+            Product::where('category_id', $sourceId)->update(['category_id' => $targetId]);
+
+            // 2. Alt kategorileri taşı
+            Category::where('parent_id', $sourceId)->update(['parent_id' => $targetId]);
+
+            // 3. Marketplace category mappinglerini aktar (hedefte yoksa)
+            $existingMarketplaceMappings = MarketplaceCategoryMapping::where('local_category_id', $targetId)
+                ->pluck('marketplace')
+                ->toArray();
+
+            MarketplaceCategoryMapping::where('local_category_id', $sourceId)
+                ->whereNotIn('marketplace', $existingMarketplaceMappings)
+                ->update(['local_category_id' => $targetId]);
+
+            // Hedefte zaten olan marketplace'ler için kaynaktakileri sil
+            MarketplaceCategoryMapping::where('local_category_id', $sourceId)->delete();
+
+            // 4. XML category mappinglerini güncelle
+            XmlCategoryMapping::where('local_category_id', $sourceId)
+                ->update(['local_category_id' => $targetId]);
+
+            // 5. Kaynak kategoriyi sil
+            Category::where('id', $sourceId)->delete();
+        });
+
+        // Ürün sayılarını güncelle
+        $this->categoryService->updateProductCounts();
+
+        return response()->json([
+            'message' => "'{$source->name}' kategorisi '{$target->name}' ile birleştirildi.",
+            'merged_source' => $source->name,
+            'merged_target' => $target->name,
+        ]);
+    }
+
+    /**
+     * Birleştirme önizlemesi: kaç ürün, alt kategori ve mapping etkilenecek.
+     */
+    public function mergePreview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'source_id' => ['required', 'integer', 'exists:categories,id'],
+            'target_id' => ['required', 'integer', 'exists:categories,id', 'different:source_id'],
+        ]);
+
+        $source = Category::withCount(['products', 'children'])->findOrFail($validated['source_id']);
+        $target = Category::findOrFail($validated['target_id']);
+
+        $marketplaceMappings = MarketplaceCategoryMapping::where('local_category_id', $source->id)->count();
+        $xmlMappings = XmlCategoryMapping::where('local_category_id', $source->id)->count();
+
+        return response()->json([
+            'source' => ['id' => $source->id, 'name' => $source->name],
+            'target' => ['id' => $target->id, 'name' => $target->name],
+            'affected' => [
+                'products' => $source->products_count,
+                'children' => $source->children_count,
+                'marketplace_mappings' => $marketplaceMappings,
+                'xml_mappings' => $xmlMappings,
             ],
         ]);
     }

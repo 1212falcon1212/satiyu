@@ -38,6 +38,9 @@ import {
   Package,
   Layers,
   Star,
+  Merge,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProductPicker } from '@/components/admin/product-picker';
@@ -473,6 +476,9 @@ export default function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [defaultTab, setDefaultTab] = useState('general');
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeSource, setMergeSource] = useState<number | ''>('');
+  const [mergeTarget, setMergeTarget] = useState<number | ''>('');
 
   // ── Data fetching ────────────────────────────────────────────
   const {
@@ -568,6 +574,36 @@ export default function CategoriesPage() {
     onError: () => {
       toast.error('Güncelleme başarısız.');
     },
+  });
+
+  const mergePreviewQuery = useQuery({
+    queryKey: ['admin', 'categories', 'merge-preview', mergeSource, mergeTarget],
+    queryFn: async () => {
+      const { data } = await api.post('/admin/categories/merge-preview', {
+        source_id: mergeSource,
+        target_id: mergeTarget,
+      });
+      return data;
+    },
+    enabled: !!mergeSource && !!mergeTarget && mergeSource !== mergeTarget,
+  });
+
+  const mergeMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/admin/categories/merge', {
+        source_id: mergeSource,
+        target_id: mergeTarget,
+      });
+      return data;
+    },
+    onSuccess: (resp) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'categories'] });
+      toast.success(resp.message);
+      setMergeDialogOpen(false);
+      setMergeSource('');
+      setMergeTarget('');
+    },
+    onError: () => toast.error('Birleştirme başarısız.'),
   });
 
   // ── Derived data ─────────────────────────────────────────────
@@ -683,10 +719,16 @@ export default function CategoriesPage() {
             ekleyin
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Yeni Kategori
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setMergeDialogOpen(true); setMergeSource(''); setMergeTarget(''); }}>
+            <Merge className="h-4 w-4" />
+            Birleştir
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Yeni Kategori
+          </Button>
+        </div>
       </div>
 
       {/* ── Homepage Sections Preview ──────────────────────────── */}
@@ -1090,6 +1132,97 @@ export default function CategoriesPage() {
             }
           >
             {deleteMutation.isPending ? 'Siliniyor...' : 'Sil'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* ── Merge Dialog ──────────────────────────────────────────── */}
+      <Dialog
+        isOpen={mergeDialogOpen}
+        onClose={() => setMergeDialogOpen(false)}
+      >
+        <DialogClose onClose={() => setMergeDialogOpen(false)} />
+        <DialogHeader>
+          <DialogTitle>Kategorileri Birleştir</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-secondary-600 mb-4">
+            Kaynak kategorideki tüm ürünler, alt kategoriler ve marketplace eşleştirmeleri hedef kategoriye taşınır. Kaynak kategori silinir.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
+                Kaynak Kategori (silinecek)
+              </label>
+              <select
+                className="w-full rounded-md border border-secondary-300 px-3 py-2 text-sm"
+                value={mergeSource}
+                onChange={(e) => setMergeSource(e.target.value ? Number(e.target.value) : '')}
+              >
+                <option value="">Seçin...</option>
+                {flattenForSelect(categories).map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
+                Hedef Kategori (korunacak)
+              </label>
+              <select
+                className="w-full rounded-md border border-secondary-300 px-3 py-2 text-sm"
+                value={mergeTarget}
+                onChange={(e) => setMergeTarget(e.target.value ? Number(e.target.value) : '')}
+              >
+                <option value="">Seçin...</option>
+                {flattenForSelect(categories, 0, typeof mergeSource === 'number' ? mergeSource : undefined).map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {mergePreviewQuery.data && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-medium text-amber-800">Etkilenecek veriler</span>
+              </div>
+              <ul className="text-sm text-amber-700 space-y-1">
+                <li>Ürünler: <strong>{mergePreviewQuery.data.affected.products}</strong></li>
+                <li>Alt kategoriler: <strong>{mergePreviewQuery.data.affected.children}</strong></li>
+                <li>Marketplace eşleştirmeleri: <strong>{mergePreviewQuery.data.affected.marketplace_mappings}</strong></li>
+                <li>XML eşleştirmeleri: <strong>{mergePreviewQuery.data.affected.xml_mappings}</strong></li>
+              </ul>
+              <p className="mt-2 text-xs text-amber-600">
+                <strong>{mergePreviewQuery.data.source.name}</strong> → <strong>{mergePreviewQuery.data.target.name}</strong> olarak birleştirilecek.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setMergeDialogOpen(false)}>
+            İptal
+          </Button>
+          <Button
+            variant="danger"
+            loading={mergeMutation.isPending}
+            disabled={!mergeSource || !mergeTarget || mergeSource === mergeTarget}
+            onClick={() => mergeMutation.mutate()}
+          >
+            {mergeMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Birleştiriliyor...
+              </>
+            ) : (
+              <>
+                <Merge className="h-4 w-4" />
+                Birleştir
+              </>
+            )}
           </Button>
         </DialogFooter>
       </Dialog>

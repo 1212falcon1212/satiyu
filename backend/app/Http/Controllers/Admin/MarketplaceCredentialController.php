@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMarketplaceCredentialRequest;
 use App\Models\MarketplaceCredential;
+use App\Services\Marketplace\CiceksepetiApiService;
 use App\Services\Marketplace\HepsiburadaApiService;
 use App\Services\Marketplace\TrendyolApiService;
 use Illuminate\Http\JsonResponse;
@@ -72,6 +73,7 @@ class MarketplaceCredentialController extends Controller
         $service = match ($marketplace) {
             'trendyol' => new TrendyolApiService($credential),
             'hepsiburada' => new HepsiburadaApiService($credential),
+            'ciceksepeti' => new CiceksepetiApiService($credential),
             default => throw new \InvalidArgumentException('Geçersiz marketplace: ' . $marketplace),
         };
 

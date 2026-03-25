@@ -373,6 +373,8 @@ export default function XmlSourceDetailPage() {
   // Step 3: Category exclusion state
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set());
   const [categorySearch, setCategorySearch] = useState('');
+  // Step 3: Category mapping to local categories (xml_category_path → local_category_id)
+  const [categoryMappingOverrides, setCategoryMappingOverrides] = useState<Map<string, number>>(new Map());
 
   // Step 4: Price rules state
   const [priceRuleForm, setPriceRuleForm] = useState({
@@ -415,6 +417,32 @@ export default function XmlSourceDetailPage() {
   });
 
   const source = sourceData?.data;
+
+  // Fetch local categories for mapping dropdown
+  const { data: localCategoriesData } = useQuery<{ data: Array<{ id: number; name: string; children?: any[] }> }>({
+    queryKey: ['admin', 'categories', 'tree'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/categories');
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const localCategoryOptions = React.useMemo(() => {
+    const result: Array<{ value: number; label: string }> = [];
+    const walk = (items: any[], parentPath = '') => {
+      items.forEach((item: any) => {
+        const name = item.name;
+        const fullPath = parentPath ? `${parentPath} > ${name}` : name;
+        result.push({ value: item.id, label: fullPath });
+        if (item.children?.length) {
+          walk(item.children, fullPath);
+        }
+      });
+    };
+    walk(localCategoriesData?.data ?? []);
+    return result;
+  }, [localCategoriesData]);
 
   // Sync form when source loads
   const [formInitialized, setFormInitialized] = useState(false);
@@ -989,7 +1017,21 @@ export default function XmlSourceDetailPage() {
     setSelectionMode('manual');
   }, [previewData]);
 
-  const handleStartImport = useCallback(() => {
+  const handleStartImport = useCallback(async () => {
+    // Save category mapping overrides before import
+    if (categoryMappingOverrides.size > 0 && sourceId) {
+      try {
+        const mappings = Array.from(categoryMappingOverrides.entries()).map(([xmlPath, localId]) => ({
+          xml_category_path: xmlPath,
+          local_category_id: localId,
+        }));
+        await api.post(`/admin/xml-sources/${sourceId}/category-mappings/batch`, { mappings });
+      } catch {
+        toast.error('Kategori eşleştirmeleri kaydedilemedi.');
+        return;
+      }
+    }
+
     const payload: ImportFilters = {};
     if (selectionMode === 'manual' && selectedIndices.size > 0) {
       payload.product_indices = Array.from(selectedIndices);
@@ -1002,7 +1044,7 @@ export default function XmlSourceDetailPage() {
       (payload as Record<string, unknown>).excluded_categories = Array.from(excludedCategories);
     }
     importMutation.mutate(payload);
-  }, [selectionMode, selectedIndices, categoryFilter, brandFilter, importLimit, priceAdjustment, excludedCategories, importMutation]);
+  }, [selectionMode, selectedIndices, categoryFilter, brandFilter, importLimit, priceAdjustment, excludedCategories, categoryMappingOverrides, sourceId, importMutation]);
 
   // Estimated import count
   const getEstimatedCount = () => {
@@ -1508,7 +1550,7 @@ export default function XmlSourceDetailPage() {
             <div className="rounded-lg border border-secondary-200 bg-white p-6">
               <h3 className="text-lg font-semibold mb-2">Kategori Eşleştirme</h3>
               <p className="text-sm text-secondary-500 mb-4">
-                Import edilecek kategorileri seçin. Hariç tutulan kategorilerdeki ürünler import edilmeyecek.
+                Import edilecek kategorileri seçin ve lokal kategorilere eşleştirin. Hariç tutulan kategorilerdeki ürünler import edilmeyecek. Eşleştirme yapılmazsa kategori otomatik oluşturulur.
               </p>
 
               {/* Summary + controls */}
@@ -1571,32 +1613,60 @@ export default function XmlSourceDetailPage() {
                 {filteredCategories.map((catPath) => {
                   const isExcluded = excludedCategories.has(catPath);
                   const depth = catPath.split(' > ').length - 1;
+                  const mappedLocalId = categoryMappingOverrides.get(catPath);
                   return (
-                    <label
+                    <div
                       key={catPath}
-                      className={`flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 rounded-lg border p-2.5 transition-colors ${
                         isExcluded
                           ? 'border-red-100 bg-red-50/50'
-                          : 'border-secondary-100 bg-white hover:bg-green-50/30'
+                          : mappedLocalId
+                            ? 'border-blue-100 bg-blue-50/30'
+                            : 'border-secondary-100 bg-white hover:bg-green-50/30'
                       }`}
                       style={{ paddingLeft: `${12 + depth * 16}px` }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={!isExcluded}
-                        onChange={() => toggleCategory(catPath)}
-                        className="rounded border-secondary-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
-                      />
-                      <span className={`text-sm flex-1 ${isExcluded ? 'text-secondary-400 line-through' : 'text-secondary-900'}`}>
+                      <label className="cursor-pointer flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!isExcluded}
+                          onChange={() => toggleCategory(catPath)}
+                          className="rounded border-secondary-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+                        />
+                      </label>
+                      <span className={`text-sm min-w-[180px] ${isExcluded ? 'text-secondary-400 line-through' : 'text-secondary-900'}`}>
                         {catPath}
                       </span>
+                      {!isExcluded && (
+                        <select
+                          className="flex-1 text-xs rounded border border-secondary-200 px-2 py-1 bg-white min-w-0"
+                          value={mappedLocalId ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : undefined;
+                            setCategoryMappingOverrides((prev) => {
+                              const next = new Map(prev);
+                              if (val) {
+                                next.set(catPath, val);
+                              } else {
+                                next.delete(catPath);
+                              }
+                              return next;
+                            });
+                          }}
+                        >
+                          <option value="">Otomatik oluştur</option>
+                          {localCategoryOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      )}
                       <Badge
-                        variant={isExcluded ? 'danger' : 'success'}
+                        variant={isExcluded ? 'danger' : mappedLocalId ? 'info' : 'success'}
                         className="text-[10px] flex-shrink-0"
                       >
-                        {isExcluded ? 'Hariç' : 'Dahil'}
+                        {isExcluded ? 'Hariç' : mappedLocalId ? 'Eşleştirildi' : 'Otomatik'}
                       </Badge>
-                    </label>
+                    </div>
                   );
                 })}
                 {filteredCategories.length === 0 && (

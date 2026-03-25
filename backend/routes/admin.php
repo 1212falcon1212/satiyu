@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\TrendyolController;
 use App\Http\Controllers\Admin\HepsiburadaController;
+use App\Http\Controllers\Admin\CiceksepetiController;
 use App\Http\Controllers\Admin\HomepageSectionController;
 use App\Http\Controllers\Admin\TrustBadgeController;
 use App\Http\Controllers\Admin\UploadController;
@@ -62,6 +63,8 @@ Route::get('/categories/{id}', [CategoryController::class, 'show']);
 Route::put('/categories/{id}', [CategoryController::class, 'update']);
 Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
 Route::put('/categories/reorder', [CategoryController::class, 'reorder']);
+Route::post('/categories/merge', [CategoryController::class, 'merge']);
+Route::post('/categories/merge-preview', [CategoryController::class, 'mergePreview']);
 
 // Brands
 Route::apiResource('brands', BrandController::class);
@@ -231,4 +234,35 @@ Route::prefix('hepsiburada')->group(function () {
     Route::get('/listings', [HepsiburadaController::class, 'listings']);
     Route::post('/stock-sync', [HepsiburadaController::class, 'syncStock']);
     Route::get('/stock-sync-results', [HepsiburadaController::class, 'stockSyncResults']);
+});
+
+// Çiçeksepeti
+Route::prefix('ciceksepeti')->group(function () {
+    Route::get('/settings', [CiceksepetiController::class, 'getSettings']);
+    Route::put('/settings', [CiceksepetiController::class, 'updateSettings']);
+    Route::post('/reset-statuses', [CiceksepetiController::class, 'resetStatuses']);
+    Route::post('/sync-categories', [CiceksepetiController::class, 'syncCategories']);
+    Route::get('/categories', [CiceksepetiController::class, 'categories']);
+    Route::get('/categories/{categoryId}/attributes', [CiceksepetiController::class, 'categoryAttributes']);
+    Route::get('/categories/search-picker', [CiceksepetiController::class, 'searchCategoriesForPicker']);
+    Route::get('/category-mappings', [CiceksepetiController::class, 'categoryMappings']);
+    Route::get('/category-mappings-with-path', [CiceksepetiController::class, 'categoryMappingsWithPath']);
+    Route::put('/category-mappings', [CiceksepetiController::class, 'updateCategoryMapping']);
+    Route::post('/batch-category-mappings', [CiceksepetiController::class, 'batchSaveCategoryMappings']);
+    Route::get('/auto-match-categories', [CiceksepetiController::class, 'autoMatchCategories']);
+    Route::get('/local-products', [CiceksepetiController::class, 'localProducts']);
+    Route::get('/local-product-ids', [CiceksepetiController::class, 'localProductIds']);
+    Route::get('/products', [CiceksepetiController::class, 'products']);
+    Route::post('/products/prepare-send', [CiceksepetiController::class, 'prepareSend']);
+    Route::post('/products/save-attributes', [CiceksepetiController::class, 'saveProductAttributes']);
+    Route::post('/products/save-category-attributes', [CiceksepetiController::class, 'saveCategoryAttributes']);
+    Route::post('/products/bulk-price-preview', [CiceksepetiController::class, 'bulkPricePreview']);
+    Route::post('/products/send', [CiceksepetiController::class, 'sendProducts']);
+    Route::get('/products/send-progress/{batchId}', [CiceksepetiController::class, 'sendProgress']);
+    Route::post('/products/price-stock', [CiceksepetiController::class, 'updatePriceStock']);
+    Route::get('/batch/{batchId}', [CiceksepetiController::class, 'batchStatus']);
+    Route::get('/batch-results', [CiceksepetiController::class, 'batchResults']);
+    Route::post('/batch/{batchId}/check', [CiceksepetiController::class, 'checkBatchFromCS']);
+    Route::post('/stock-sync', [CiceksepetiController::class, 'syncStock']);
+    Route::get('/stock-sync-results', [CiceksepetiController::class, 'stockSyncResults']);
 });
