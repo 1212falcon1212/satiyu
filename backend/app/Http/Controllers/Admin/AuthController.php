@@ -22,6 +22,14 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+
+        if (!$user->is_admin) {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Bu hesap yönetici yetkisine sahip değil.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
         $token = $user->createToken('admin-token')->plainTextToken;
 
         return response()->json([
@@ -30,6 +38,7 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'isAdmin' => (bool) $user->is_admin,
                 ],
                 'token' => $token,
             ],
@@ -56,6 +65,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'isAdmin' => (bool) $user->is_admin,
             ],
         ]);
     }
