@@ -22,7 +22,7 @@ function BrandLogo({ brand }: { brand: Brand }) {
 
   const src = brand.logoUrl.startsWith('http')
     ? brand.logoUrl
-    : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${brand.logoUrl}`;
+    : `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${brand.logoUrl}`;
 
   return (
     <Image

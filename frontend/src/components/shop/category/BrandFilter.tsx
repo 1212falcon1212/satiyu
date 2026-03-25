@@ -60,7 +60,7 @@ export function BrandFilter({ brands, selected, onChange }: BrandFilterProps) {
             const logoSrc = brand.logoUrl
               ? brand.logoUrl.startsWith('http')
                 ? brand.logoUrl
-                : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${brand.logoUrl}`
+                : `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${brand.logoUrl}`
               : null;
 
             return (

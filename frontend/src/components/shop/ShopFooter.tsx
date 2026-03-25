@@ -97,7 +97,7 @@ export function ShopFooter({ settings, categories, brands, blogPosts = [] }: Sho
               <div className="mb-4">
                 {siteLogo ? (
                   <Image
-                    src={siteLogo.startsWith('http') ? siteLogo : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${siteLogo}`}
+                    src={siteLogo.startsWith('http') ? siteLogo : `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${siteLogo}`}
                     alt={siteName}
                     width={160}
                     height={48}

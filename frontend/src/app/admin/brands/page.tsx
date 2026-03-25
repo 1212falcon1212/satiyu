@@ -73,7 +73,7 @@ function BrandLogo({ url, name }: { url: string | null; name: string }) {
 
   const src = url.startsWith('http')
     ? url
-    : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${url}`;
+    : `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${url}`;
 
   return (
     <div className="relative h-10 w-20 overflow-hidden rounded bg-white">

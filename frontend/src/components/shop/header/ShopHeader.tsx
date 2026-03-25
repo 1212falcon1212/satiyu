@@ -44,7 +44,7 @@ export function ShopHeader({ categories }: ShopHeaderProps) {
             <Link href="/" className="flex items-center gap-2 flex-shrink-0 min-w-0">
               {siteLogo ? (
                 <Image
-                  src={siteLogo.startsWith('http') ? siteLogo : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${siteLogo}`}
+                  src={siteLogo.startsWith('http') ? siteLogo : `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${siteLogo}`}
                   alt={siteName}
                   width={200}
                   height={56}

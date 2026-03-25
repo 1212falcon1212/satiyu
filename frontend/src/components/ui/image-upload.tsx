@@ -96,7 +96,7 @@ export function ImageUpload({
         <div className="group relative overflow-hidden rounded-xl border border-secondary-200 bg-secondary-50">
           <div className="relative aspect-[16/7]">
             <Image
-              src={value.startsWith('http') ? value : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${value}`}
+              src={value.startsWith('http') ? value : `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${value}`}
               alt="Görsel önizleme"
               fill
               className="object-cover"

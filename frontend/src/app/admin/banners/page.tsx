@@ -65,7 +65,7 @@ function BannerPreview({ url }: { url: string }) {
 
   const src = url.startsWith('http')
     ? url
-    : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${url}`;
+    : `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${url}`;
 
   return (
     <div className="relative h-12 w-20 overflow-hidden rounded-md bg-secondary-100">

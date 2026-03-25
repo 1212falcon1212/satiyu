@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 function resolveUrl(path: string | undefined): string | undefined {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
-  return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${path}`;
+  return `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '')}${path}`;
 }
 
 export async function generateMetadata(): Promise<Metadata> {
