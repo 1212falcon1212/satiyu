@@ -21,6 +21,6 @@ if (($data['ref'] ?? '') !== 'refs/heads/main') {
 
 // Trigger deploy in background
 file_put_contents($logFile, date('Y-m-d H:i:s') . " Deploy triggered\n", FILE_APPEND);
-exec('nohup bash /opt/deploy-satiyu.sh >> ' . $logFile . ' 2>&1 &');
+exec('nohup sudo bash /opt/deploy-satiyu.sh >> ' . $logFile . ' 2>&1 &');
 
 echo 'Deploy started';
