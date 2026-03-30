@@ -36,8 +36,7 @@ interface XmlSource {
   url: string;
   type: 'supplier' | 'custom';
   mappingConfig: Record<string, unknown> | null;
-  autoSync: boolean;
-  syncInterval: string | null;
+  stockSyncEnabled: boolean;
   lastSyncedAt: string | null;
   isActive: boolean;
   productCount: number;
@@ -49,8 +48,7 @@ interface XmlSourceFormData {
   name: string;
   url: string;
   type: 'supplier' | 'custom';
-  auto_sync: boolean;
-  sync_interval: string;
+  stock_sync_enabled: boolean;
   is_active: boolean;
   source_mode: 'url' | 'file';
   file: File | null;
@@ -81,8 +79,7 @@ const defaultForm: XmlSourceFormData = {
   name: '',
   url: '',
   type: 'supplier',
-  auto_sync: false,
-  sync_interval: 'daily',
+  stock_sync_enabled: false,
   is_active: true,
   source_mode: 'url',
   file: null,
@@ -135,8 +132,7 @@ export default function XmlSourcesPage() {
         name: payload.name,
         url: payload.url,
         type: payload.type,
-        auto_sync: payload.auto_sync,
-        sync_interval: payload.sync_interval,
+        stock_sync_enabled: payload.stock_sync_enabled,
         is_active: payload.is_active,
       });
       return data;
@@ -199,8 +195,7 @@ export default function XmlSourcesPage() {
       name: source.name,
       url: source.url,
       type: source.type,
-      auto_sync: source.autoSync,
-      sync_interval: source.syncInterval ?? 'daily',
+      stock_sync_enabled: source.stockSyncEnabled ?? false,
       is_active: source.isActive,
       source_mode: 'url',
       file: null,
@@ -272,11 +267,11 @@ export default function XmlSourcesPage() {
       ),
     },
     {
-      key: 'autoSync',
-      header: 'Oto. Senk',
+      key: 'stockSyncEnabled',
+      header: 'Fiyat/Stok Sync',
       render: (s) => (
-        <Badge variant={s.autoSync ? 'success' : 'outline'}>
-          {s.autoSync ? 'Aktif' : 'Pasif'}
+        <Badge variant={s.stockSyncEnabled ? 'success' : 'outline'}>
+          {s.stockSyncEnabled ? 'Aktif' : 'Pasif'}
         </Badge>
       ),
     },
@@ -420,27 +415,12 @@ export default function XmlSourcesPage() {
               ]}
             />
             <Switch
-              checked={formData.auto_sync}
+              checked={formData.stock_sync_enabled}
               onCheckedChange={(checked) =>
-                setFormData((p) => ({ ...p, auto_sync: checked }))
+                setFormData((p) => ({ ...p, stock_sync_enabled: checked }))
               }
-              label="Otomatik Senkronizasyon"
+              label="Fiyat/Stok Senkronizasyonu"
             />
-            {formData.auto_sync && (
-              <Select
-                label="Senkronizasyon Aralığı"
-                value={formData.sync_interval}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, sync_interval: e.target.value }))
-                }
-                options={[
-                  { label: 'Saatlik', value: 'hourly' },
-                  { label: 'Günlük', value: 'daily' },
-                  { label: 'Haftalık', value: 'weekly' },
-                  { label: 'Aylık', value: 'monthly' },
-                ]}
-              />
-            )}
             <Switch
               checked={formData.is_active}
               onCheckedChange={(checked) =>

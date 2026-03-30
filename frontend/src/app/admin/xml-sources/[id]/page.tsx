@@ -55,8 +55,7 @@ interface XmlSource {
     product_node?: string;
     wrapper_node?: string;
   } | null;
-  autoSync: boolean;
-  syncInterval: string | null;
+  stockSyncEnabled: boolean;
   lastSyncedAt: string | null;
   isActive: boolean;
   productCount: number;
@@ -334,8 +333,7 @@ export default function XmlSourceDetailPage() {
     name: '',
     url: '',
     type: 'supplier' as 'supplier' | 'custom',
-    auto_sync: false,
-    sync_interval: 'daily',
+    stock_sync_enabled: false,
     is_active: true,
   });
   const [sourceMode, setSourceMode] = useState<'url' | 'file'>('url');
@@ -451,8 +449,7 @@ export default function XmlSourceDetailPage() {
       name: source.name,
       url: source.url,
       type: source.type,
-      auto_sync: source.autoSync,
-      sync_interval: source.syncInterval ?? 'daily',
+      stock_sync_enabled: source.stockSyncEnabled ?? false,
       is_active: source.isActive,
     });
     if (source.mappingConfig) {
@@ -542,8 +539,7 @@ export default function XmlSourceDetailPage() {
         const fd = new FormData();
         fd.append('name', payload.name);
         fd.append('type', payload.type);
-        fd.append('auto_sync', payload.auto_sync ? '1' : '0');
-        fd.append('sync_interval', payload.sync_interval);
+        fd.append('stock_sync_enabled', payload.stock_sync_enabled ? '1' : '0');
         fd.append('is_active', payload.is_active ? '1' : '0');
         fd.append('file', selectedFile);
         const { data } = await api.post('/admin/xml-sources', fd, {
@@ -1216,27 +1212,12 @@ export default function XmlSourceDetailPage() {
                 ]}
               />
               <Switch
-                checked={generalForm.auto_sync}
+                checked={generalForm.stock_sync_enabled}
                 onCheckedChange={(checked) =>
-                  setGeneralForm((p) => ({ ...p, auto_sync: checked }))
+                  setGeneralForm((p) => ({ ...p, stock_sync_enabled: checked }))
                 }
-                label="Otomatik Senkronizasyon"
+                label="Fiyat/Stok Senkronizasyonu"
               />
-              {generalForm.auto_sync && (
-                <Select
-                  label="Senkronizasyon Aralığı"
-                  value={generalForm.sync_interval}
-                  onChange={(e) =>
-                    setGeneralForm((p) => ({ ...p, sync_interval: e.target.value }))
-                  }
-                  options={[
-                    { label: 'Saatlik', value: 'hourly' },
-                    { label: 'Günlük', value: 'daily' },
-                    { label: 'Haftalık', value: 'weekly' },
-                    { label: 'Aylık', value: 'monthly' },
-                  ]}
-                />
-              )}
               <Switch
                 checked={generalForm.is_active}
                 onCheckedChange={(checked) =>

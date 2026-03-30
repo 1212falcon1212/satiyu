@@ -30,64 +30,8 @@ export function ShopFooter({ settings, categories, brands, blogPosts = [] }: Sho
   const siteName = general.site_name || 'Moda';
   const siteLogo = general.site_logo;
 
-  const latestPosts = blogPosts.slice(0, 3);
-
   return (
     <footer>
-      {/* Pre-footer: Blog Posts */}
-      {latestPosts.length > 0 && (
-        <div className="bg-secondary-50 border-t border-secondary-100">
-          <div className="container-main py-12">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-1">Blog</p>
-                <h3 className="text-xl font-bold text-secondary-900 lg:text-2xl">Son Yazılarımız</h3>
-              </div>
-              <Link
-                href="/blog"
-                className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-secondary-700 hover:text-accent transition-colors"
-              >
-                Tümünü Gör <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <div className="grid gap-6 sm:grid-cols-3">
-              {latestPosts.map((post) => (
-                <Link key={post.id} href={`/blog/${post.slug}`} className="group">
-                  <div className="relative overflow-hidden rounded-lg aspect-[16/10] mb-3">
-                    {post.featuredImage ? (
-                      <Image
-                        src={post.featuredImage}
-                        alt={post.title}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        sizes="(max-width: 640px) 100vw, 33vw"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-secondary-200" />
-                    )}
-                  </div>
-                  <p className="text-[11px] text-secondary-400 mb-1">
-                    {post.author} · {formatDate(post.publishedAt)}
-                  </p>
-                  <h4 className="text-sm font-semibold text-secondary-900 group-hover:text-accent transition-colors line-clamp-2">
-                    {post.title}
-                  </h4>
-                </Link>
-              ))}
-            </div>
-
-            <Link
-              href="/blog"
-              className="sm:hidden mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-secondary-700 hover:text-accent transition-colors"
-            >
-              Tümünü Gör <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      )}
-
       {/* Main footer */}
       <div className="bg-[#333] text-secondary-300">
         <div className="container-main py-12">

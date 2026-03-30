@@ -16,6 +16,7 @@ import {
   Store,
   ShieldCheck,
   ShoppingCart,
+  Users,
   MessageSquare,
   Settings,
   ChevronLeft,
@@ -24,6 +25,7 @@ import {
   Send,
   RotateCcw,
   Newspaper,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
@@ -68,6 +70,7 @@ const menuSections: MenuSection[] = [
     title: 'Pazaryeri',
     items: [
       { label: 'XML Kaynakları', href: '/admin/xml-sources', icon: FileCode },
+      { label: 'XML Güncellemeleri', href: '/admin/xml-updates', icon: RefreshCw },
       { label: 'Trendyol', href: '/admin/trendyol', icon: Store },
       { label: 'Hepsiburada', href: '/admin/hepsiburada', icon: Store },
       { label: 'Çiçeksepeti', href: '/admin/ciceksepeti', icon: Store },
@@ -86,6 +89,12 @@ const menuSections: MenuSection[] = [
     items: [
       { label: 'Siparişler', href: '/admin/orders', icon: ShoppingCart },
       { label: 'İadeler', href: '/admin/refunds', icon: RotateCcw },
+    ],
+  },
+  {
+    title: 'Müşteri Yönetimi',
+    items: [
+      { label: 'Müşteriler', href: '/admin/customers', icon: Users },
     ],
   },
   {

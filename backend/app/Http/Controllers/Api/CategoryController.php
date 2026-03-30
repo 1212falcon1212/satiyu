@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Services\CategoryService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
@@ -26,25 +27,53 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function show(string $slug): JsonResponse
+    public function show(Request $request, string $slug): JsonResponse
     {
         $category = $this->categoryService->getBySlug($slug);
 
-        $products = Product::where('is_active', true)
-            ->where(function ($query) use ($category) {
-                $query->where('category_id', $category->id)
-                    ->orWhereHas('category', function ($q) use ($category) {
+        $query = Product::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($category) {
+                $q->where('category_id', $category->id)
+                    ->orWhereHas('category', function ($sub) use ($category) {
                         $pathPrefix = $category->path
                             ? $category->path . '/' . $category->id
                             : (string) $category->id;
-                        $q->where('path', 'LIKE', $pathPrefix . '%');
+                        $sub->where('path', 'LIKE', $pathPrefix . '%');
                     });
-            })
+            });
+
+        // Brand filters
+        if ($request->filled('brands')) {
+            $brandIds = array_filter(explode(',', $request->input('brands')));
+            $query->whereIn('brand_id', $brandIds);
+        } elseif ($request->filled('brand_id')) {
+            $query->where('brand_id', $request->input('brand_id'));
+        }
+
+        // Price filters (support both naming conventions)
+        if ($request->filled('min_price') || $request->filled('price_min')) {
+            $query->where('price', '>=', $request->input('min_price', $request->input('price_min')));
+        }
+        if ($request->filled('max_price') || $request->filled('price_max')) {
+            $query->where('price', '<=', $request->input('max_price', $request->input('price_max')));
+        }
+
+        // Search filter
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $products = $query
             ->with(['images', 'brand', 'category'])
             ->orderByRaw("CASE WHEN stock_quantity > 0 AND price > 0 AND stock_status != 'out_of_stock' THEN 0 ELSE 1 END ASC")
             ->orderBy('sort_order')
-            ->paginate(request()->input('per_page', 15))
-            ->appends(request()->query());
+            ->paginate($request->input('per_page', 15))
+            ->appends($request->query());
 
         return response()->json([
             'data' => [

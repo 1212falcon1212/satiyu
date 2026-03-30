@@ -101,8 +101,7 @@ class XmlSourceController extends Controller
             'url' => ['sometimes', 'url', 'max:2048'],
             'type' => ['sometimes', 'in:supplier,custom'],
             'mapping_config' => ['nullable', 'array'],
-            'auto_sync' => ['boolean'],
-            'sync_interval' => ['nullable', 'in:hourly,daily,weekly,monthly'],
+            'stock_sync_enabled' => ['boolean'],
             'is_active' => ['boolean'],
         ]);
 

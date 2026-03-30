@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\XmlSource;
 use App\Models\XmlStockSyncLog;
+use App\Models\XmlUpdateLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -13,6 +14,7 @@ class XmlStockSyncService
 {
     public function __construct(
         protected XmlParserService $parser,
+        protected XmlPricingService $pricingService,
     ) {}
 
     public function sync(XmlSource $source): XmlStockSyncLog
@@ -23,6 +25,7 @@ class XmlStockSyncService
             'xml_product_count' => 0,
             'matched_products' => 0,
             'stock_changed_products' => 0,
+            'price_changed_products' => 0,
             'matched_variants' => 0,
             'stock_changed_variants' => 0,
             'unmatched_count' => 0,
@@ -48,7 +51,7 @@ class XmlStockSyncService
 
             // 2. DB'den lookup map'leri oluştur
             $dbProducts = Product::where('xml_source_id', $source->id)
-                ->select('id', 'sku', 'barcode', 'name', 'stock_quantity')
+                ->select('id', 'sku', 'barcode', 'name', 'stock_quantity', 'price', 'compare_price')
                 ->get();
 
             $skuMap = [];
@@ -82,7 +85,8 @@ class XmlStockSyncService
             }
 
             // 3. XML iterate — in-memory eşleştirme
-            $productUpdates = []; // [id => new_stock]
+            $productStockUpdates = []; // [id => new_stock]
+            $productPriceUpdates = []; // [id => ['price' => x, 'compare_price' => y]]
             $variantUpdates = []; // [id => new_stock]
             $productVariantStocks = []; // [product_id => total_variant_stock]
 
@@ -157,23 +161,68 @@ class XmlStockSyncService
                 // Ana ürün stoğu: varyant varsa toplam, yoksa XML stoku
                 $newProductStock = $hasVariants ? $totalVariantStock : $xmlStock;
 
-                if ((int) $dbProduct->stock_quantity !== $newProductStock) {
-                    $productUpdates[$dbProduct->id] = $newProductStock;
-                    $changedProductIds[] = $dbProduct->id;
+                // Fiyat hesapla (price rules dahil)
+                $xmlPrice = $this->parser->parsePrice($mapped['price'] ?? 0);
+                $xmlComparePrice = $this->parser->parsePrice($mapped['compare_price'] ?? 0);
+                $categoryPath = $mapped['category'] ?? '';
+                $brand = $mapped['brand'] ?? null;
+
+                $adjusted = $this->pricingService->applyRules(
+                    $source,
+                    $xmlPrice,
+                    $xmlComparePrice > 0 ? $xmlComparePrice : null,
+                    $categoryPath,
+                    $brand,
+                );
+
+                $newPrice = $adjusted['price'];
+                $newComparePrice = $adjusted['compare_price'];
+                $zeroPriceWarning = $adjusted['zero_price_warning'] ?? false;
+
+                $stockChanged = (int) $dbProduct->stock_quantity !== $newProductStock;
+                $priceChanged = !$zeroPriceWarning && abs((float) $dbProduct->price - $newPrice) >= 0.01;
+
+                if ($stockChanged) {
+                    $productStockUpdates[$dbProduct->id] = $newProductStock;
                     $stats['stock_changed_products']++;
+                }
+
+                if ($priceChanged) {
+                    $productPriceUpdates[$dbProduct->id] = [
+                        'price' => $newPrice,
+                        'compare_price' => $newComparePrice,
+                    ];
+                    $stats['price_changed_products']++;
+                }
+
+                if ($stockChanged || $priceChanged) {
+                    $changedProductIds[] = $dbProduct->id;
+
+                    XmlUpdateLog::create([
+                        'xml_source_id' => $source->id,
+                        'product_id' => $dbProduct->id,
+                        'product_name' => $dbProduct->name,
+                        'change_type' => ($stockChanged && $priceChanged) ? 'both' : ($priceChanged ? 'price' : 'stock'),
+                        'old_price' => $priceChanged ? (float) $dbProduct->price : null,
+                        'new_price' => $priceChanged ? $newPrice : null,
+                        'old_stock' => $stockChanged ? (int) $dbProduct->stock_quantity : null,
+                        'new_stock' => $stockChanged ? $newProductStock : null,
+                        'source_name' => $source->name,
+                    ]);
                 }
             }
 
-            // 4. Batch update — 500'lük chunk'lar, CASE/WHEN SQL
-            DB::transaction(function () use ($productUpdates, $variantUpdates) {
-                $this->batchUpdateStock('products', $productUpdates);
+            // 4. Batch update — 500'lük chunk'lar
+            DB::transaction(function () use ($productStockUpdates, $productPriceUpdates, $variantUpdates) {
+                $this->batchUpdateStock('products', $productStockUpdates);
                 $this->batchUpdateStock('product_variants', $variantUpdates);
+                $this->batchUpdatePrices($productPriceUpdates);
             });
 
             // stock_status güncelle
-            if (!empty($productUpdates)) {
-                $zeroStockIds = array_keys(array_filter($productUpdates, fn($stock) => $stock <= 0));
-                $inStockIds = array_keys(array_filter($productUpdates, fn($stock) => $stock > 0));
+            if (!empty($productStockUpdates)) {
+                $zeroStockIds = array_keys(array_filter($productStockUpdates, fn($stock) => $stock <= 0));
+                $inStockIds = array_keys(array_filter($productStockUpdates, fn($stock) => $stock > 0));
 
                 if (!empty($zeroStockIds)) {
                     Product::whereIn('id', $zeroStockIds)->update(['stock_status' => 'out_of_stock']);
@@ -213,7 +262,8 @@ class XmlStockSyncService
             'error_log' => !empty($errors) ? $errors : null,
             'changes_summary' => [
                 'changed_product_ids' => $changedProductIds,
-                'product_updates_count' => count($productUpdates ?? []),
+                'product_stock_updates_count' => count($productStockUpdates ?? []),
+                'product_price_updates_count' => count($productPriceUpdates ?? []),
                 'variant_updates_count' => count($variantUpdates ?? []),
             ],
             'duration_seconds' => $startedAt->diffInSeconds($completedAt),
@@ -225,6 +275,43 @@ class XmlStockSyncService
         $source->update(['last_stock_synced_at' => $completedAt]);
 
         return $log;
+    }
+
+    protected function batchUpdatePrices(array $updates): void
+    {
+        if (empty($updates)) {
+            return;
+        }
+
+        foreach (array_chunk($updates, 500, true) as $chunk) {
+            $priceCases = [];
+            $compareCases = [];
+            $ids = [];
+            $bindings = [];
+            $compareBindings = [];
+
+            foreach ($chunk as $id => $data) {
+                $priceCases[] = "WHEN id = ? THEN ?";
+                $bindings[] = $id;
+                $bindings[] = $data['price'];
+
+                $compareCases[] = "WHEN id = ? THEN ?";
+                $compareBindings[] = $id;
+                $compareBindings[] = $data['compare_price'];
+
+                $ids[] = $id;
+            }
+
+            $priceSql = implode(' ', $priceCases);
+            $compareSql = implode(' ', $compareCases);
+            $idPlaceholders = implode(',', array_fill(0, count($ids), '?'));
+            $allBindings = array_merge($bindings, $compareBindings, $ids);
+
+            DB::statement(
+                "UPDATE `products` SET `price` = CASE {$priceSql} END, `compare_price` = CASE {$compareSql} END, `updated_at` = NOW() WHERE `id` IN ({$idPlaceholders})",
+                $allBindings
+            );
+        }
     }
 
     protected function batchUpdateStock(string $table, array $updates): void

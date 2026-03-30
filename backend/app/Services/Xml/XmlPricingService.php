@@ -15,7 +15,7 @@ class XmlPricingService
      * @param float|null $comparePrice — original compare price from XML
      * @param string|null $categoryPath — the XML category path (for category-scoped rules)
      * @param string|null $brandName — the XML brand name (for brand-scoped rules)
-     * @return array{price: float, compare_price: float|null}
+     * @return array{price: float, compare_price: float|null, zero_price_warning: bool}
      */
     public function applyRules(
         XmlSource $source,
@@ -54,6 +54,10 @@ class XmlPricingService
             }
         }
 
+        // Detect zero-price products: original price was 0 (or near-zero) and adjusted is still <= 0.01
+        $isOriginalZero = $price < 0.02;
+        $zeroPriceWarning = $isOriginalZero && $adjustedPrice <= 0.01;
+
         // Ensure price is positive
         $adjustedPrice = max(0.01, $adjustedPrice);
 
@@ -65,6 +69,7 @@ class XmlPricingService
         return [
             'price' => round($adjustedPrice, 2),
             'compare_price' => $adjustedComparePrice !== null ? round($adjustedComparePrice, 2) : null,
+            'zero_price_warning' => $zeroPriceWarning,
         ];
     }
 

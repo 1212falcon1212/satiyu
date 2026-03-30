@@ -220,7 +220,47 @@ export interface Customer {
   id: number;
   name: string;
   email: string;
-  phone?: string;
+  phone: string | null;
+  isActive: boolean;
+  createdAt: string;
+  ordersCount?: number;
+  totalSpent?: number;
+  orders?: CustomerOrder[];
+  addresses?: CustomerAddress[];
+  reviews?: CustomerReview[];
+}
+
+export interface CustomerOrder {
+  id: number;
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  total: number;
+  createdAt: string;
+  itemsCount: number;
+}
+
+export interface CustomerAddress {
+  id: number;
+  title: string;
+  fullName: string;
+  phone: string;
+  city: string;
+  district: string;
+  neighborhood: string | null;
+  addressLine: string;
+  postalCode: string | null;
+  isDefault: boolean;
+}
+
+export interface CustomerReview {
+  id: number;
+  rating: number;
+  title: string | null;
+  comment: string;
+  isApproved: boolean;
+  createdAt: string;
+  product: { id: number; name: string; slug: string } | null;
 }
 
 // ─── Address ─────────────────────────────────────────────────

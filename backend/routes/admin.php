@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PageController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Admin\CiceksepetiController;
 use App\Http\Controllers\Admin\HomepageSectionController;
 use App\Http\Controllers\Admin\TrustBadgeController;
 use App\Http\Controllers\Admin\UploadController;
+use App\Http\Controllers\Admin\XmlUpdateController;
 use Illuminate\Support\Facades\Route;
 
 // Auth (no middleware - login endpoint)
@@ -102,6 +104,9 @@ Route::put('/homepage-sections-reorder', [HomepageSectionController::class, 'reo
 
 // Pages
 Route::apiResource('pages', PageController::class);
+
+// XML Updates
+Route::get('/xml-updates', [XmlUpdateController::class, 'index']);
 
 // XML Sources
 Route::apiResource('xml-sources', XmlSourceController::class);
@@ -200,6 +205,9 @@ Route::prefix('trendyol')->group(function () {
     Route::get('/batch-results', [TrendyolController::class, 'batchResults']);
     Route::post('/batch/{batchRequestId}/check', [TrendyolController::class, 'checkBatchFromTrendyol']);
 });
+
+// Customers
+Route::apiResource('customers', CustomerController::class)->only(['index', 'show', 'update']);
 
 // Blog Posts
 Route::apiResource('blog-posts', \App\Http\Controllers\Admin\BlogPostController::class);

@@ -17,6 +17,7 @@ use App\Models\XmlCategoryMapping;
 use App\Models\XmlImportLog;
 use App\Models\XmlProduct;
 use App\Models\XmlSource;
+use App\Models\XmlUpdateLog;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -277,6 +278,7 @@ class XmlImportService
                         }
 
                         // Apply price rules (new system)
+                        $zeroPriceWarning = false;
                         if ($hasPriceRules) {
                             $price = $this->parser->parsePrice($mapped['price'] ?? 0);
                             $comparePrice = $this->parser->parsePrice($mapped['compare_price'] ?? 0);
@@ -289,6 +291,7 @@ class XmlImportService
                             );
                             $mapped['price'] = (string) $adjusted['price'];
                             $mapped['compare_price'] = $adjusted['compare_price'] !== null ? (string) $adjusted['compare_price'] : '';
+                            $zeroPriceWarning = $adjusted['zero_price_warning'] ?? false;
 
                             // Apply to variants too
                             foreach ($variants as &$v) {
@@ -299,6 +302,17 @@ class XmlImportService
                                 }
                             }
                             unset($v);
+                        } else {
+                            // Even without price rules, detect zero-price products
+                            $rawPrice = $this->parser->parsePrice($mapped['price'] ?? 0);
+                            if ($rawPrice < 0.02) {
+                                $zeroPriceWarning = true;
+                            }
+                        }
+
+                        // Flag zero-price products for deactivation during upsert
+                        if ($zeroPriceWarning) {
+                            $mapped['_zero_price_warning'] = true;
                         }
 
                         $this->upsertProduct($source, $mapped, $rawProduct, $variants, $stats, $processed);
@@ -632,7 +646,7 @@ class XmlImportService
                 'currency' => 'TRY',
                 'brand_id' => $brandId,
                 'category_id' => $categoryId,
-                'is_active' => true,
+                'is_active' => empty($mapped['_zero_price_warning']),
             ];
 
             // Primary lookup: sku + xml_source_id
@@ -686,6 +700,24 @@ class XmlImportService
             $changesDetected = null;
             if ($existingXmlProduct && $existingXmlProduct->mapped_data) {
                 $changesDetected = $this->detectChanges($existingXmlProduct->mapped_data, $mapped);
+            }
+
+            if ($changesDetected) {
+                $priceChanged = isset($changesDetected['price']);
+                $stockChanged = isset($changesDetected['stock_quantity']);
+                if ($priceChanged || $stockChanged) {
+                    XmlUpdateLog::create([
+                        'xml_source_id' => $source->id,
+                        'product_id' => $localProductId,
+                        'product_name' => $mapped['name'] ?? $sku,
+                        'change_type' => ($priceChanged && $stockChanged) ? 'both' : ($priceChanged ? 'price' : 'stock'),
+                        'old_price' => $changesDetected['price']['old'] ?? null,
+                        'new_price' => $changesDetected['price']['new'] ?? null,
+                        'old_stock' => $changesDetected['stock_quantity']['old'] ?? null,
+                        'new_stock' => $changesDetected['stock_quantity']['new'] ?? null,
+                        'source_name' => $source->name,
+                    ]);
+                }
             }
 
             XmlProduct::updateOrCreate(
