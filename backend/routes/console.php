@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('xml:stock-sync')->dailyAt('02:00')->withoutOverlapping(30);
 Schedule::command('marketplace:stock-sync')->everyFiveMinutes()->withoutOverlapping(10);
+Schedule::command('scout:import', ['App\\Models\\Product'])->cron('0 */5 * * *')->withoutOverlapping(30);
