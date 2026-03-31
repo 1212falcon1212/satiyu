@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\HomepageSectionController;
 use App\Http\Controllers\Admin\TrustBadgeController;
 use App\Http\Controllers\Admin\UploadController;
 use App\Http\Controllers\Admin\XmlUpdateController;
+use App\Http\Controllers\Admin\BulkProductController;
 use Illuminate\Support\Facades\Route;
 
 // Auth (no middleware - login endpoint)
@@ -82,6 +83,17 @@ Route::post('/products/{productId}/variants/generate', [ProductVariantController
 Route::put('/products/{productId}/variants/bulk-update', [ProductVariantController::class, 'bulkUpdate']);
 Route::put('/products/{productId}/variants/{variantId}', [ProductVariantController::class, 'update']);
 Route::delete('/products/{productId}/variants/{variantId}', [ProductVariantController::class, 'destroy']);
+
+// Bulk Product Operations
+Route::prefix('bulk-products')->group(function () {
+    Route::get('/', [BulkProductController::class, 'index']);
+    Route::post('/barcode-suffix', [BulkProductController::class, 'barcodeSuffix']);
+    Route::post('/barcode-prefix', [BulkProductController::class, 'barcodePrefix']);
+    Route::post('/sku-suffix', [BulkProductController::class, 'skuSuffix']);
+    Route::post('/sku-prefix', [BulkProductController::class, 'skuPrefix']);
+    Route::post('/name-modify', [BulkProductController::class, 'nameModify']);
+    Route::post('/preview', [BulkProductController::class, 'preview']);
+});
 
 // Variant Types & Options
 Route::apiResource('variant-types', VariantTypeController::class);

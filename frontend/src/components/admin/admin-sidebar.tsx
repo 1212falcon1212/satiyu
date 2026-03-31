@@ -54,6 +54,7 @@ const menuSections: MenuSection[] = [
       { label: 'Markalar', href: '/admin/brands', icon: Tags },
       { label: 'Varyant Tipleri', href: '/admin/variant-types', icon: Layers },
       { label: 'Kategoriler', href: '/admin/categories', icon: FolderTree },
+      { label: 'Toplu İşlemler', href: '/admin/toplu-islemler', icon: Settings },
     ],
   },
   {
