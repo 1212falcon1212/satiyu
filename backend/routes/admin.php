@@ -194,6 +194,7 @@ Route::prefix('trendyol')->group(function () {
     Route::put('/brand-mappings', [TrendyolController::class, 'updateBrandMapping']);
     Route::get('/auto-match-brands', [TrendyolController::class, 'autoMatchBrands']);
     Route::post('/batch-brand-mappings', [TrendyolController::class, 'batchSaveBrandMappings']);
+    Route::post('/bulk-map-all-brands', [TrendyolController::class, 'bulkMapAllBrands']);
     Route::post('/sync-cargo-companies', [TrendyolController::class, 'syncCargoCompanies']);
     Route::get('/cargo-companies', [TrendyolController::class, 'cargoCompanies']);
     Route::put('/cargo-companies/default', [TrendyolController::class, 'setDefaultCargoCompany']);

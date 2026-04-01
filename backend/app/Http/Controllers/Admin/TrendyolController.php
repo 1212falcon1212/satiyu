@@ -215,6 +215,11 @@ class TrendyolController extends Controller
             'marketplace_brand_name' => ['required', 'string'],
         ]);
 
+        // Clear existing mapping for this local brand
+        MarketplaceBrandMapping::where('marketplace', 'trendyol')
+            ->where('local_brand_id', $validated['local_brand_id'])
+            ->update(['local_brand_id' => null]);
+
         MarketplaceBrandMapping::updateOrCreate(
             [
                 'marketplace' => 'trendyol',
@@ -227,6 +232,36 @@ class TrendyolController extends Controller
         );
 
         return response()->json(['message' => 'Marka eşleştirmesi kaydedildi.']);
+    }
+
+    public function bulkMapAllBrands(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'marketplace_brand_id' => ['required', 'integer'],
+            'marketplace_brand_name' => ['required', 'string'],
+        ]);
+
+        $brands = \App\Models\Brand::all();
+        $count = 0;
+
+        foreach ($brands as $brand) {
+            MarketplaceBrandMapping::updateOrCreate(
+                [
+                    'marketplace' => 'trendyol',
+                    'local_brand_id' => $brand->id,
+                ],
+                [
+                    'marketplace_brand_id' => $validated['marketplace_brand_id'],
+                    'marketplace_brand_name' => $validated['marketplace_brand_name'],
+                ]
+            );
+            $count++;
+        }
+
+        return response()->json([
+            'message' => "{$count} marka '{$validated['marketplace_brand_name']}' ile eşleştirildi.",
+            'saved_count' => $count,
+        ]);
     }
 
     // ==========================================
@@ -1728,14 +1763,44 @@ class TrendyolController extends Controller
         $validated = $request->validate([
             'mappings' => ['required', 'array', 'min:1'],
             'mappings.*.local_brand_id' => ['required', 'exists:brands,id'],
-            'mappings.*.marketplace_brand_mapping_id' => ['required', 'exists:marketplace_brand_mappings,id'],
+            'mappings.*.marketplace_brand_mapping_id' => ['nullable', 'exists:marketplace_brand_mappings,id'],
+            'mappings.*.marketplace_brand_id' => ['nullable', 'integer'],
+            'mappings.*.marketplace_brand_name' => ['nullable', 'string'],
         ]);
 
         $savedCount = 0;
 
         foreach ($validated['mappings'] as $mapping) {
-            MarketplaceBrandMapping::where('id', $mapping['marketplace_brand_mapping_id'])
-                ->update(['local_brand_id' => $mapping['local_brand_id']]);
+            $localBrandId = $mapping['local_brand_id'];
+
+            // Clear any existing mapping for this local brand first
+            MarketplaceBrandMapping::where('marketplace', 'trendyol')
+                ->where('local_brand_id', $localBrandId)
+                ->update(['local_brand_id' => null]);
+
+            if (!empty($mapping['marketplace_brand_mapping_id'])) {
+                MarketplaceBrandMapping::where('id', $mapping['marketplace_brand_mapping_id'])
+                    ->update(['local_brand_id' => $localBrandId]);
+            } elseif (!empty($mapping['marketplace_brand_id'])) {
+                // Find existing mapping for this marketplace brand or create new
+                $existing = MarketplaceBrandMapping::where('marketplace', 'trendyol')
+                    ->where('marketplace_brand_id', $mapping['marketplace_brand_id'])
+                    ->whereNull('local_brand_id')
+                    ->first();
+
+                if ($existing) {
+                    $existing->update(['local_brand_id' => $localBrandId]);
+                } else {
+                    MarketplaceBrandMapping::create([
+                        'marketplace' => 'trendyol',
+                        'local_brand_id' => $localBrandId,
+                        'marketplace_brand_id' => $mapping['marketplace_brand_id'],
+                        'marketplace_brand_name' => $mapping['marketplace_brand_name'] ?? '',
+                    ]);
+                }
+            } else {
+                continue;
+            }
             $savedCount++;
         }
 

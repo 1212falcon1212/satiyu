@@ -1100,6 +1100,10 @@ function BrandsTab() {
   const [savingRowId, setSavingRowId] = useState<number | null>(null);
   const [editingRowId, setEditingRowId] = useState<number | null>(null);
   const [localSearch, setLocalSearch] = useState('');
+  const [bulkBrandSearch, setBulkBrandSearch] = useState('');
+  const [bulkBrandResults, setBulkBrandResults] = useState<Array<{ id: number; name: string }>>([]);
+  const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [bulkMapping, setBulkMapping] = useState(false);
 
   // Fetch existing mappings (only matched ones: local_brand_id IS NOT NULL)
   const { data: mappingsData } = useQuery<{
@@ -1260,17 +1264,30 @@ function BrandsTab() {
   const unmatchedCount = unifiedRows.filter((r) => r.status === 'unmatched').length;
 
   const handleBatchSave = () => {
-    const mappings = Array.from(acceptedMappings.entries())
-      .filter(([, mappingId]) => mappingId !== undefined)
-      .map(([localId, mappingId]) => ({
-        local_brand_id: localId,
-        marketplace_brand_mapping_id: mappingId,
-      }));
+    const mappings: Array<Record<string, unknown>> = [];
+    acceptedMappings.forEach((mappingId, localId) => {
+      const name = acceptedNames.get(localId);
+      if (name?.startsWith('API:')) {
+        const parts = name.split(':');
+        const trendyolBrandId = parseInt(parts[1], 10);
+        const brandName = parts.slice(2).join(':');
+        mappings.push({
+          local_brand_id: localId,
+          marketplace_brand_id: trendyolBrandId,
+          marketplace_brand_name: brandName,
+        });
+      } else if (mappingId) {
+        mappings.push({
+          local_brand_id: localId,
+          marketplace_brand_mapping_id: mappingId,
+        });
+      }
+    });
     if (mappings.length === 0) {
       toast.error('Kaydedilecek eşleştirme yok.');
       return;
     }
-    batchSaveMutation.mutate(mappings);
+    batchSaveMutation.mutate(mappings as Array<{ local_brand_id: number; marketplace_brand_mapping_id: number }>);
   };
 
   const handleAcceptAll = () => {
@@ -1286,6 +1303,35 @@ function BrandsTab() {
     setAcceptedMappings(newMappings);
     setAcceptedNames(newNames);
     toast.success(`${newMappings.size} eşleştirme seçildi.`);
+  };
+
+  // Bulk brand search
+  const handleBulkSearch = async (q: string) => {
+    setBulkBrandSearch(q);
+    if (q.length < 2) { setBulkBrandResults([]); return; }
+    try {
+      const { data } = await api.get('/admin/trendyol/brands', { params: { search: q, per_page: 20 } });
+      setBulkBrandResults((data.data ?? []).map((b: { id: number; marketplaceBrandId: number; marketplaceBrandName: string }) => ({ id: b.marketplaceBrandId, name: b.marketplaceBrandName })));
+    } catch { setBulkBrandResults([]); }
+  };
+
+  const handleBulkMapAll = async (brandId: number, brandName: string) => {
+    setBulkMapping(true);
+    try {
+      const { data } = await api.post('/admin/trendyol/bulk-map-all-brands', {
+        marketplace_brand_id: brandId,
+        marketplace_brand_name: brandName,
+      });
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'trendyol', 'brands'] });
+      setShowBulkDialog(false);
+      setBulkBrandSearch('');
+      setBulkBrandResults([]);
+    } catch {
+      toast.error('Toplu eşleştirme başarısız.');
+    } finally {
+      setBulkMapping(false);
+    }
   };
 
   const handlePickerChange = (localBrandId: number, mappingId: number | undefined, brandName?: string) => {
@@ -1353,7 +1399,50 @@ function BrandsTab() {
           <Wand2 className="h-4 w-4" />
           Otomatik Eşle
         </Button>
+        <Button
+          onClick={() => setShowBulkDialog(true)}
+          variant="outline"
+          size="sm"
+        >
+          Tümünü Tek Markayla Eşleştir
+        </Button>
       </div>
+
+      {/* Bulk Map Dialog */}
+      {showBulkDialog && (
+        <div className="rounded-lg border-2 border-accent/30 bg-accent/5 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-secondary-900">Tüm Markaları Tek Trendyol Markasıyla Eşleştir</h4>
+            <button onClick={() => { setShowBulkDialog(false); setBulkBrandSearch(''); setBulkBrandResults([]); }} className="text-secondary-400 hover:text-secondary-600 text-lg">&times;</button>
+          </div>
+          <p className="text-xs text-secondary-500">Trendyol markası arayın ve seçin. Tüm yerel markalar seçtiğiniz Trendyol markasıyla eşleştirilecek.</p>
+          <div className="relative">
+            <input
+              type="text"
+              value={bulkBrandSearch}
+              onChange={(e) => handleBulkSearch(e.target.value)}
+              placeholder="Trendyol markası ara... (ör: SATIYU)"
+              className="w-full rounded-md border border-secondary-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            {bulkBrandResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-secondary-200 bg-white shadow-lg">
+                {bulkBrandResults.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => handleBulkMapAll(b.id, b.name)}
+                    disabled={bulkMapping}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-secondary-50 disabled:opacity-50"
+                  >
+                    <span className="font-medium">{b.name}</span>
+                    <span className="text-xs text-secondary-400">ID: {b.id}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {bulkMapping && <p className="text-sm text-accent animate-pulse">Eşleştiriliyor...</p>}
+        </div>
+      )}
 
       {/* Ana panel */}
       <div className="rounded-lg border border-secondary-200 bg-white p-4 space-y-4">
