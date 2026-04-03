@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Newspaper,
   RefreshCw,
+  Menu as MenuIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
@@ -61,6 +62,7 @@ const menuSections: MenuSection[] = [
     title: 'İçerik',
     items: [
       { label: 'Ana Sayfa Yönetimi', href: '/admin/homepage', icon: LayoutGrid },
+      { label: 'Menü', href: '/admin/menu', icon: MenuIcon },
       { label: 'Banner\'lar', href: '/admin/banners', icon: Image },
       { label: 'Güven Rozetleri', href: '/admin/trust-badges', icon: ShieldCheck },
       { label: 'Blog Yazıları', href: '/admin/blog-posts', icon: Newspaper },

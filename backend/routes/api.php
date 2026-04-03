@@ -59,6 +59,51 @@ Route::get('/pages/{slug}', [PageController::class, 'show']);
 Route::get('/homepage/sections', [HomepageSectionController::class, 'index']);
 Route::get('/homepage/random-products', [HomepageSectionController::class, 'randomProducts']);
 
+// Menu
+Route::get('/menu', function () {
+    $items = \App\Models\MenuItem::withoutGlobalScope('ordered')
+        ->where('is_active', true)
+        ->with('category:id,name,slug')
+        ->orderBy('sort_order')
+        ->get();
+
+    $formatItem = function ($item) {
+        return [
+            'id' => $item->id,
+            'parentId' => $item->parent_id,
+            'label' => $item->label,
+            'type' => $item->type,
+            'url' => $item->type === 'category' && $item->category
+                ? '/kategori/' . $item->category->slug
+                : $item->url,
+            'openNewTab' => (bool) $item->open_new_tab,
+            'categoryId' => $item->category_id,
+            'categorySlug' => $item->category?->slug,
+            'depth' => $item->depth ?? 0,
+        ];
+    };
+
+    // Build tree using plain arrays
+    $flat = [];
+    foreach ($items as $item) {
+        $formatted = $formatItem($item);
+        $formatted['children'] = [];
+        $flat[$formatted['id']] = $formatted;
+    }
+
+    $tree = [];
+    foreach ($flat as &$item) {
+        if ($item['parentId'] && isset($flat[$item['parentId']])) {
+            $flat[$item['parentId']]['children'][] = &$item;
+        } else {
+            $tree[] = &$item;
+        }
+    }
+    unset($item);
+
+    return response()->json(['data' => array_values($tree)]);
+});
+
 // Search
 Route::get('/search', [SearchController::class, 'search']);
 

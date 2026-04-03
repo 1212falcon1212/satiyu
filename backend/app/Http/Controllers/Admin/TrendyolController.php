@@ -215,11 +215,6 @@ class TrendyolController extends Controller
             'marketplace_brand_name' => ['required', 'string'],
         ]);
 
-        // Clear existing mapping for this local brand
-        MarketplaceBrandMapping::where('marketplace', 'trendyol')
-            ->where('local_brand_id', $validated['local_brand_id'])
-            ->update(['local_brand_id' => null]);
-
         MarketplaceBrandMapping::updateOrCreate(
             [
                 'marketplace' => 'trendyol',
@@ -232,6 +227,17 @@ class TrendyolController extends Controller
         );
 
         return response()->json(['message' => 'Marka eşleştirmesi kaydedildi.']);
+    }
+
+    public function removeBrandMapping(int $localBrandId): JsonResponse
+    {
+        $deleted = MarketplaceBrandMapping::where('marketplace', 'trendyol')
+            ->where('local_brand_id', $localBrandId)
+            ->delete();
+
+        return response()->json([
+            'message' => $deleted ? 'Eşleştirme kaldırıldı.' : 'Eşleştirme bulunamadı.',
+        ]);
     }
 
     public function bulkMapAllBrands(Request $request): JsonResponse
@@ -372,6 +378,22 @@ class TrendyolController extends Controller
                 ->whereDoesntHave('variants', fn ($vq) =>
                     $vq->where('is_active', true)->where('stock_quantity', '>', 0)
                 );
+        }
+
+        // XML kaynak filtresi
+        if ($request->filled('xml_source_id')) {
+            $query->where('xml_source_id', $request->input('xml_source_id'));
+        }
+
+        // XML kategori filtresi (xml_products tablosundaki mapped_data->category)
+        if ($request->filled('xml_category')) {
+            $xmlCategory = $request->input('xml_category');
+            $productIds = \App\Models\XmlProduct::whereNotNull('local_product_id')
+                ->where(function ($q) use ($xmlCategory) {
+                    $q->where('mapped_data->category', 'like', "%{$xmlCategory}%");
+                })
+                ->pluck('local_product_id');
+            $query->whereIn('id', $productIds);
         }
 
         // Varyant filtresi
@@ -1773,31 +1795,24 @@ class TrendyolController extends Controller
         foreach ($validated['mappings'] as $mapping) {
             $localBrandId = $mapping['local_brand_id'];
 
-            // Clear any existing mapping for this local brand first
-            MarketplaceBrandMapping::where('marketplace', 'trendyol')
-                ->where('local_brand_id', $localBrandId)
-                ->update(['local_brand_id' => null]);
-
             if (!empty($mapping['marketplace_brand_mapping_id'])) {
-                MarketplaceBrandMapping::where('id', $mapping['marketplace_brand_mapping_id'])
-                    ->update(['local_brand_id' => $localBrandId]);
+                // Update existing mapping row — set its local_brand_id
+                MarketplaceBrandMapping::updateOrCreate(
+                    ['marketplace' => 'trendyol', 'local_brand_id' => $localBrandId],
+                    [
+                        'marketplace_brand_id' => MarketplaceBrandMapping::find($mapping['marketplace_brand_mapping_id'])?->marketplace_brand_id ?? 0,
+                        'marketplace_brand_name' => MarketplaceBrandMapping::find($mapping['marketplace_brand_mapping_id'])?->marketplace_brand_name ?? '',
+                    ]
+                );
             } elseif (!empty($mapping['marketplace_brand_id'])) {
-                // Find existing mapping for this marketplace brand or create new
-                $existing = MarketplaceBrandMapping::where('marketplace', 'trendyol')
-                    ->where('marketplace_brand_id', $mapping['marketplace_brand_id'])
-                    ->whereNull('local_brand_id')
-                    ->first();
-
-                if ($existing) {
-                    $existing->update(['local_brand_id' => $localBrandId]);
-                } else {
-                    MarketplaceBrandMapping::create([
-                        'marketplace' => 'trendyol',
-                        'local_brand_id' => $localBrandId,
+                // Create or update by local_brand_id
+                MarketplaceBrandMapping::updateOrCreate(
+                    ['marketplace' => 'trendyol', 'local_brand_id' => $localBrandId],
+                    [
                         'marketplace_brand_id' => $mapping['marketplace_brand_id'],
                         'marketplace_brand_name' => $mapping['marketplace_brand_name'] ?? '',
-                    ]);
-                }
+                    ]
+                );
             } else {
                 continue;
             }

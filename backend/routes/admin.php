@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\TrendyolController;
 use App\Http\Controllers\Admin\HepsiburadaController;
 use App\Http\Controllers\Admin\CiceksepetiController;
 use App\Http\Controllers\Admin\HomepageSectionController;
+use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\TrustBadgeController;
 use App\Http\Controllers\Admin\UploadController;
 use App\Http\Controllers\Admin\XmlUpdateController;
@@ -74,6 +75,7 @@ Route::apiResource('brands', BrandController::class);
 
 // Products
 Route::post('/products/bulk-price', [ProductController::class, 'bulkPrice']);
+Route::post('/products/bulk-delete', [ProductController::class, 'bulkDelete']);
 Route::apiResource('products', ProductController::class);
 
 // Product Variants
@@ -114,11 +116,31 @@ Route::apiResource('trust-badges', TrustBadgeController::class);
 Route::apiResource('homepage-sections', HomepageSectionController::class);
 Route::put('/homepage-sections-reorder', [HomepageSectionController::class, 'reorder']);
 
+// Menu Items
+Route::apiResource('menu-items', MenuController::class);
+Route::put('/menu-items-reorder', [MenuController::class, 'reorder']);
+Route::post('/menu-items-sync-categories', [MenuController::class, 'syncFromCategories']);
+
 // Pages
 Route::apiResource('pages', PageController::class);
 
 // XML Updates
 Route::get('/xml-updates', [XmlUpdateController::class, 'index']);
+
+// XML Categories (unique list for filtering)
+Route::get('/xml-sources/xml-categories', function (\Illuminate\Http\Request $request) {
+    $query = \App\Models\XmlProduct::whereNotNull('local_product_id');
+    if ($request->filled('source_id')) {
+        $query->where('xml_source_id', $request->input('source_id'));
+    }
+    $categories = $query->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(mapped_data, '$.category')) as cat")
+        ->distinct()
+        ->pluck('cat')
+        ->filter()
+        ->sort()
+        ->values();
+    return response()->json(['data' => $categories]);
+});
 
 // XML Sources
 Route::apiResource('xml-sources', XmlSourceController::class);
@@ -192,6 +214,7 @@ Route::prefix('trendyol')->group(function () {
     Route::get('/brands', [TrendyolController::class, 'brands']);
     Route::get('/brands/search', [TrendyolController::class, 'searchBrand']);
     Route::put('/brand-mappings', [TrendyolController::class, 'updateBrandMapping']);
+    Route::delete('/brand-mappings/{localBrandId}', [TrendyolController::class, 'removeBrandMapping']);
     Route::get('/auto-match-brands', [TrendyolController::class, 'autoMatchBrands']);
     Route::post('/batch-brand-mappings', [TrendyolController::class, 'batchSaveBrandMappings']);
     Route::post('/bulk-map-all-brands', [TrendyolController::class, 'bulkMapAllBrands']);

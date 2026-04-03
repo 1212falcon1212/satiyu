@@ -280,15 +280,26 @@ class XmlParserService
     public function extractImages(array $data): array
     {
         $images = [];
-        $imageKeys = ['image', 'resim', 'picture', 'img', 'Image', 'Resim', 'Picture'];
+        $imageKeys = ['image', 'resim', 'picture', 'img', 'photo', 'foto', 'gorsel', 'Image', 'Resim', 'Picture'];
 
         foreach ($data as $key => $value) {
-            if (in_array($key, $imageKeys) && is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
-                $images[] = $value;
-            } elseif (preg_match('/^(image|resim|picture|img)(\d+)?$/i', $key) && is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
-                $images[] = $value;
-            } elseif (preg_match('/^(picture|vPicture)\d+(Path)?$/i', $key) && is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
-                $images[] = $value;
+            if (is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
+                // Exact match: image, resim, picture, img, photo, foto, gorsel
+                if (in_array($key, $imageKeys)) {
+                    $images[] = $value;
+                }
+                // Numbered: image_1, image-1, image1, resim_1, img_2, photo_3, picture1Path, etc.
+                elseif (preg_match('/^(image|resim|picture|img|photo|foto|gorsel|mainImage|productImage)[_\-]?(\d+)?(Path|Url)?$/i', $key)) {
+                    $images[] = $value;
+                }
+                // Variant style: vPicture1Path, picture1Path
+                elseif (preg_match('/^(v?Picture|v?Image|v?Resim)\d+(Path|Url)?$/i', $key)) {
+                    $images[] = $value;
+                }
+                // URL ending with image extension in any field
+                elseif (preg_match('/\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$/i', $value) && stripos($key, 'image') !== false) {
+                    $images[] = $value;
+                }
             } elseif (is_array($value)) {
                 foreach ($value as $subValue) {
                     if (is_string($subValue) && filter_var($subValue, FILTER_VALIDATE_URL)) {

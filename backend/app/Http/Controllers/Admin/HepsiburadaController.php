@@ -211,6 +211,19 @@ class HepsiburadaController extends Controller
                 ->whereDoesntHave('variants', fn ($vq) => $vq->where('is_active', true)->where('stock_quantity', '>', 0));
         }
 
+        // XML kaynak filtresi
+        if ($request->filled('xml_source_id')) {
+            $query->where('xml_source_id', $request->input('xml_source_id'));
+        }
+        if ($request->filled('xml_category')) {
+            $xmlCategory = $request->input('xml_category');
+            $productIds = \App\Models\XmlProduct::whereNotNull('local_product_id')
+                ->where(function ($q) use ($xmlCategory) {
+                    $q->where('mapped_data->category', 'like', "%{$xmlCategory}%");
+                })->pluck('local_product_id');
+            $query->whereIn('id', $productIds);
+        }
+
         // Varyant filtresi
         $hasVariants = $request->input('has_variants');
         if ($hasVariants === 'yes') {

@@ -1221,6 +1221,19 @@ function BrandsTab() {
     },
   });
 
+  // Remove mapping mutation
+  const removeMappingMutation = useMutation({
+    mutationFn: async (localBrandId: number) => {
+      await api.delete(`/admin/trendyol/brand-mappings/${localBrandId}`);
+      return localBrandId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'trendyol', 'brands'] });
+      toast.success('Eşleştirme kaldırıldı.');
+    },
+    onError: () => toast.error('Kaldırma başarısız.'),
+  });
+
   // Build unified rows
   const unifiedRows: UnifiedBrandRow[] = React.useMemo(() => {
     const allLocal = localBrands?.data ?? [];
@@ -1574,13 +1587,26 @@ function BrandsTab() {
                       <td className="py-2.5">
                         <div className="flex items-center gap-1">
                           {isMatchedIdle ? (
-                            <button
-                              className="text-secondary-400 hover:text-primary-600 p-1"
-                              title="Düzenle"
-                              onClick={() => setEditingRowId(row.localBrand.id)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
+                            <>
+                              <button
+                                className="text-secondary-400 hover:text-primary-600 p-1"
+                                title="Düzenle"
+                                onClick={() => setEditingRowId(row.localBrand.id)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                className="text-secondary-400 hover:text-red-600 p-1"
+                                title="Eşleştirmeyi Kaldır"
+                                onClick={() => {
+                                  if (confirm(`"${row.localBrand.name}" eşleştirmesini kaldırmak istiyor musunuz?`)) {
+                                    removeMappingMutation.mutate(row.localBrand.id);
+                                  }
+                                }}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </>
                           ) : isEditing && !hasPendingSelection ? (
                             <button
                               className="text-secondary-400 hover:text-secondary-600 p-1"

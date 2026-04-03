@@ -185,6 +185,8 @@ function LocalProductsTab() {
   const [hasVariants, setHasVariants] = useState('all');
   const [stockStatus, setStockStatus] = useState('all');
   const [categoryId, setCategoryId] = useState('all');
+  const [xmlSourceId, setXmlSourceId] = useState('all');
+  const [xmlCategory, setXmlCategory] = useState('all');
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showWizard, setShowWizard] = useState(false);
@@ -240,6 +242,30 @@ function LocalProductsTab() {
     },
   });
 
+  // Fetch XML sources for filter
+  const { data: xmlSourcesData } = useQuery<{ data: Array<{ id: number; name: string }> }>({
+    queryKey: ['admin-xml-sources-list'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/xml-sources?per_page=100');
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const xmlSources = xmlSourcesData?.data ?? [];
+
+  // Fetch XML categories (unique from xml_products)
+  const { data: xmlCategoriesData } = useQuery<string[]>({
+    queryKey: ['admin-xml-categories', xmlSourceId],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (xmlSourceId !== 'all') params.source_id = xmlSourceId;
+      const { data } = await api.get('/admin/xml-sources/xml-categories', { params });
+      return data.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const xmlCategories = xmlCategoriesData ?? [];
+
   // Fetch categories for filter
   const { data: categoriesData } = useQuery<{ data: CategoryOption[] }>({
     queryKey: ['admin-categories-list'],
@@ -269,7 +295,7 @@ function LocalProductsTab() {
 
   // Fetch products
   const { data, isLoading } = useQuery<LocalProductsResponse>({
-    queryKey: ['trendyol-local-products', { search, mpStatus, readiness, hasVariants, stockStatus, categoryId, page }],
+    queryKey: ['trendyol-local-products', { search, mpStatus, readiness, hasVariants, stockStatus, categoryId, xmlSourceId, xmlCategory, page }],
     queryFn: async () => {
       const params: Record<string, string | number> = { page, per_page: 20 };
       if (search.trim()) params.search = search.trim();
@@ -278,6 +304,8 @@ function LocalProductsTab() {
       if (hasVariants !== 'all') params.has_variants = hasVariants;
       if (stockStatus !== 'all') params.stock_status = stockStatus;
       if (categoryId !== 'all') params.category_id = categoryId;
+      if (xmlSourceId !== 'all') params.xml_source_id = xmlSourceId;
+      if (xmlCategory !== 'all') params.xml_category = xmlCategory;
       const { data } = await api.get('/admin/trendyol/local-products', { params });
       return data;
     },
@@ -296,9 +324,11 @@ function LocalProductsTab() {
     if (readiness !== 'all') params.readiness = readiness;
     if (hasVariants !== 'all') params.has_variants = hasVariants;
     if (stockStatus !== 'all') params.stock_status = stockStatus;
+    if (xmlSourceId !== 'all') params.xml_source_id = xmlSourceId;
+    if (xmlCategory !== 'all') params.xml_category = xmlCategory;
     const { data } = await api.get<{ ids: number[]; total: number }>('/admin/trendyol/local-product-ids', { params });
     return data;
-  }, [categoryId, search, mpStatus, readiness, hasVariants, stockStatus]);
+  }, [categoryId, search, mpStatus, readiness, hasVariants, stockStatus, xmlSourceId, xmlCategory]);
 
   const handleSelectAll = useCallback(async () => {
     setBulkSelectLoading(true);
@@ -446,7 +476,7 @@ function LocalProductsTab() {
 
   const resetPage = () => setPage(1);
   const isAnyLoading = sendMutation.isPending || priceStockMutation.isPending || resetStatusesMutation.isPending;
-  const hasActiveFilters = readiness !== 'all' || hasVariants !== 'all' || stockStatus !== 'all' || categoryId !== 'all' || mpStatus !== 'all' || search.trim() !== '';
+  const hasActiveFilters = readiness !== 'all' || hasVariants !== 'all' || stockStatus !== 'all' || categoryId !== 'all' || mpStatus !== 'all' || xmlSourceId !== 'all' || xmlCategory !== 'all' || search.trim() !== '';
   const selectedCategoryName = categoryId !== 'all' ? categories.find((c) => String(c.id) === categoryId)?.name : null;
 
   return (
@@ -550,6 +580,30 @@ function LocalProductsTab() {
             ))}
           </select>
 
+          <select
+            value={xmlSourceId}
+            onChange={(e) => { setXmlSourceId(e.target.value); setXmlCategory('all'); resetPage(); }}
+            className="h-10 rounded-lg border border-secondary-200 bg-secondary-50 px-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          >
+            <option value="all">Tüm XML Kaynakları</option>
+            {xmlSources.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+
+          {xmlCategories.length > 0 && (
+            <select
+              value={xmlCategory}
+              onChange={(e) => { setXmlCategory(e.target.value); resetPage(); }}
+              className="h-10 rounded-lg border border-secondary-200 bg-secondary-50 px-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 max-w-[250px]"
+            >
+              <option value="all">Tüm XML Kategorileri</option>
+              {xmlCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          )}
+
           {hasActiveFilters && (
             <button
               onClick={() => {
@@ -559,6 +613,8 @@ function LocalProductsTab() {
                 setHasVariants('all');
                 setStockStatus('all');
                 setCategoryId('all');
+                setXmlSourceId('all');
+                setXmlCategory('all');
                 resetPage();
               }}
               className="h-10 rounded-lg border border-secondary-200 px-3 text-sm text-secondary-500 hover:bg-secondary-50 hover:text-secondary-700 transition-colors whitespace-nowrap"

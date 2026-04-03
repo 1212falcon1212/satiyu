@@ -111,6 +111,22 @@ class ProductController extends Controller
         ]);
     }
 
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_ids' => 'required|array|min:1',
+            'product_ids.*' => 'integer|exists:products,id',
+        ]);
+
+        $count = Product::whereIn('id', $validated['product_ids'])->count();
+        Product::whereIn('id', $validated['product_ids'])->delete();
+
+        return response()->json([
+            'message' => "{$count} ürün silindi.",
+            'deleted' => $count,
+        ]);
+    }
+
     public function bulkPrice(Request $request): JsonResponse
     {
         $validated = $request->validate([

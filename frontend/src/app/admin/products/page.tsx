@@ -34,6 +34,7 @@ import {
   ChevronUp,
   ChevronDown,
   PackageOpen,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { revalidateCache } from '@/lib/revalidate';
@@ -807,6 +808,25 @@ export default function ProductsPage() {
             >
               <DollarSign className="h-4 w-4" />
               Toplu Fiyat Güncelle
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              onClick={async () => {
+                if (!confirm(`${selectedIds.size} ürünü silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
+                try {
+                  const { data } = await api.post('/admin/products/bulk-delete', { product_ids: Array.from(selectedIds) });
+                  toast.success(data.message);
+                  setSelectedIds(new Set());
+                  queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+                } catch {
+                  toast.error('Silme işlemi başarısız.');
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Toplu Sil
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
               <X className="h-4 w-4" />
