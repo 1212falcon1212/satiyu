@@ -139,7 +139,7 @@ class TrendyolProductFormatter
 
     public function formatForUpdate(Product $product, MarketplaceProduct $mpProduct): array
     {
-        $images = $product->images->sortBy('sort_order')->take(8)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
+        $images = $product->images->sortBy('sort_order')->take(6)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
         $basePrice = (float) ($product->compare_price ?? $product->price);
         $prices = $this->ensurePrices($basePrice, $basePrice);
 
@@ -271,7 +271,7 @@ class TrendyolProductFormatter
         int $brandId,
         int $cargoCompanyId,
     ): array {
-        $images = $product->images->sortBy('sort_order')->take(8)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
+        $images = $product->images->sortBy('sort_order')->take(6)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
         $attributes = $this->mapAttributes($product, $categoryAttributes);
 
         // Varyantsız ürünlerde slicer/varianter attribute'ları da
@@ -321,8 +321,8 @@ class TrendyolProductFormatter
     ): array {
         $variantImages = $variant->relationLoaded('images') ? $variant->images : $variant->images()->get();
         $images = $variantImages->isNotEmpty()
-            ? $variantImages->sortBy('sort_order')->take(8)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray()
-            : $product->images->sortBy('sort_order')->take(8)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
+            ? $variantImages->sortBy('sort_order')->take(6)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray()
+            : $product->images->sortBy('sort_order')->take(6)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
 
         $basePrice = (float) ($variant->compare_price ?? $product->compare_price ?? $variant->price ?? $product->price);
         $prices = $this->ensurePrices($basePrice, $basePrice);
@@ -354,8 +354,8 @@ class TrendyolProductFormatter
     {
         $variantImages = $variant->relationLoaded('images') ? $variant->images : $variant->images()->get();
         $images = $variantImages->isNotEmpty()
-            ? $variantImages->sortBy('sort_order')->take(8)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray()
-            : $product->images->sortBy('sort_order')->take(8)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
+            ? $variantImages->sortBy('sort_order')->take(6)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray()
+            : $product->images->sortBy('sort_order')->take(6)->map(fn ($img) => ['url' => $img->image_url])->values()->toArray();
 
         $basePrice = (float) ($variant->compare_price ?? $product->compare_price ?? $variant->price ?? $product->price);
         $prices = $this->ensurePrices($basePrice, $basePrice);
