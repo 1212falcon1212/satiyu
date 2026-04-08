@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -15,10 +15,12 @@ import {
   Calendar,
   Shield,
   ShieldOff,
+  Lock,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -65,6 +67,25 @@ export default function AdminCustomerDetailPage() {
     },
     onError: () => toast.error('Durum güncellenemedi.'),
   });
+
+  const [newPassword, setNewPassword] = useState('');
+
+  const changePasswordMutation = useMutation({
+    mutationFn: (password: string) => api.put(`/admin/customers/${id}`, { password }),
+    onSuccess: () => {
+      setNewPassword('');
+      toast.success('Müşteri şifresi başarıyla değiştirildi.');
+    },
+    onError: () => toast.error('Şifre değiştirilemedi.'),
+  });
+
+  const handleChangePassword = useCallback(() => {
+    if (newPassword.length < 6) {
+      toast.error('Şifre en az 6 karakter olmalıdır.');
+      return;
+    }
+    changePasswordMutation.mutate(newPassword);
+  }, [newPassword, changePasswordMutation]);
 
   if (isLoading) {
     return (
@@ -240,6 +261,40 @@ export default function AdminCustomerDetailPage() {
                   <p className="text-2xl font-bold text-primary-600">{formatPrice(customer.totalSpent ?? 0)}</p>
                   <p className="text-xs text-secondary-500">Toplam Harcama</p>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Password Change */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-secondary-400" />
+                Şifre Değiştir
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label htmlFor="new-password" className="mb-1.5 block text-xs text-secondary-500">
+                    Yeni Şifre
+                  </label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="Yeni şifre girin..."
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <Button
+                  onClick={handleChangePassword}
+                  loading={changePasswordMutation.isPending}
+                  disabled={!newPassword}
+                  size="sm"
+                >
+                  Şifreyi Değiştir
+                </Button>
               </div>
             </CardContent>
           </Card>

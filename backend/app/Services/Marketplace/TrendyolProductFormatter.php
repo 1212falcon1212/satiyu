@@ -153,6 +153,7 @@ class TrendyolProductFormatter
             'listPrice' => $prices['listPrice'],
             'salePrice' => $prices['salePrice'],
             'vatRate' => (int) ($product->vat_rate ?? 20),
+            'deliveryDuration' => 2,
             'images' => $images,
         ];
     }
@@ -300,6 +301,7 @@ class TrendyolProductFormatter
             'salePrice' => $prices['salePrice'],
             'vatRate' => (int) ($product->vat_rate ?? 20),
             'cargoCompanyId' => $cargoCompanyId,
+            'deliveryDuration' => 2,
             'images' => $images,
             'attributes' => $attributes,
         ];
@@ -345,6 +347,7 @@ class TrendyolProductFormatter
             'salePrice' => $prices['salePrice'],
             'vatRate' => (int) ($product->vat_rate ?? 20),
             'cargoCompanyId' => $cargoCompanyId,
+            'deliveryDuration' => 2,
             'images' => $images,
             'attributes' => $attributes,
         ];
@@ -370,6 +373,7 @@ class TrendyolProductFormatter
             'listPrice' => $prices['listPrice'],
             'salePrice' => $prices['salePrice'],
             'vatRate' => (int) ($product->vat_rate ?? 20),
+            'deliveryDuration' => 2,
             'images' => $images,
         ];
     }

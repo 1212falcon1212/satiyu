@@ -30,17 +30,14 @@ class ProductController extends Controller
             ->allowedFilters([
                 AllowedFilter::exact('category_id'),
                 AllowedFilter::callback('category_tree', function ($query, $value) {
-                    $category = Category::find($value);
-                    if (!$category) return;
-                    $pathPrefix = $category->path
-                        ? $category->path . '/' . $category->id
-                        : (string) $category->id;
-                    $query->where(function ($q) use ($value, $pathPrefix) {
-                        $q->where('category_id', $value)
-                            ->orWhereHas('category', function ($sub) use ($pathPrefix) {
-                                $sub->where('path', 'LIKE', $pathPrefix . '%');
-                            });
-                    });
+                    $categoryIds = collect([(int) $value]);
+                    $parentIds = collect([(int) $value]);
+                    while ($parentIds->isNotEmpty()) {
+                        $childIds = \App\Models\Category::whereIn('parent_id', $parentIds)->pluck('id');
+                        $categoryIds = $categoryIds->merge($childIds);
+                        $parentIds = $childIds;
+                    }
+                    $query->whereIn('category_id', $categoryIds->unique());
                 }),
                 AllowedFilter::exact('brand_id'),
                 AllowedFilter::exact('is_active'),

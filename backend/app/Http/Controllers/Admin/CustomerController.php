@@ -119,7 +119,12 @@ class CustomerController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'email', 'max:255', 'unique:customers,email,' . $customer->id],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'password' => ['nullable', 'string', 'min:6'],
         ]);
+
+        if (!empty($validated['password'])) {
+            $validated['password'] = bcrypt($validated['password']);
+        }
 
         $customer->update($validated);
 
