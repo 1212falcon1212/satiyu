@@ -282,10 +282,9 @@ function LocalProductsTab() {
     const traverse = (items: any[], parentPath = '') => {
       for (const item of items) {
         const fullPath = parentPath ? `${parentPath} > ${item.name}` : item.name;
+        flat.push({ id: item.id, name: fullPath });
         if (item.children?.length) {
           traverse(item.children, fullPath);
-        } else {
-          flat.push({ id: item.id, name: fullPath });
         }
       }
     };
